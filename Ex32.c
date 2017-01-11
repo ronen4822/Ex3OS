@@ -31,8 +31,15 @@ union semun {
 	struct semid_ds *buf;
 	ushort *array;
 };
-
-void removeFromBoard(int row, int column, char* board, int * numOfChars) { //NOT WORKING!!
+void lock() {
+	sb.sem_op = -1;
+	semop(semid, &sb, 1);
+}
+void unlock() {
+	sb.sem_op = 1;
+	semop(semid, &sb, 1);
+}
+void removeFromBoard(int row, int column, char* board, int * numOfChars) {
 	int i, j, k;
 	for (i = 0; i <= columnNum * row; i += columnNum) {
 		for (j = i; j <= (i + column); ++j) {
@@ -43,7 +50,7 @@ void removeFromBoard(int row, int column, char* board, int * numOfChars) { //NOT
 		}
 	}
 }
-void printCurrentBoardState(const char* board) { //working
+void printCurrentBoardState(const char* board) {
 	int i, j;
 	int k = 0;
 	for (i = 0; i < rowNum; ++i) {
@@ -57,7 +64,7 @@ void printCurrentBoardState(const char* board) { //working
 		write(1, "\n", 1);
 	}
 }
-void updateBoard(char * board, char * turnMade, int * numOfChars) { //working
+void updateBoard(char * board, char * turnMade, int * numOfChars) {
 	int row, column, i, switchToColumns;
 	i = 1;
 	row = 0;
@@ -107,12 +114,9 @@ void playTurn(char* board, int myNum, int* numOfChars) {
 	char tmpBuffer[1024] = { '\0' };
 	sprintf(tmpBuffer, "%d%d,%d", myNum, lastTurnMadeRow, lastTurnMadeColumn);
 
-	sb.sem_op = -1;
-	semop(semid, &sb, 1);
+	lock();
 	strcpy(memVar, tmpBuffer);
-	sb.sem_op = 1;
-	semop(semid, &sb, 1);
-
+	unlock();
 }
 int checkFinish(int* numOfChars) {
 	if ((*numOfChars) == 0) {
@@ -130,7 +134,6 @@ void readMsg(char* msgToCheck) {
 	change = 0;
 	rows = 0;
 	columns = 0;
-	int extra = 0;
 	int i;
 	for (i = 0; i < strlen(msgToCheck); ++i) {
 		if (msgToCheck[i] == ',') {
@@ -150,11 +153,9 @@ void readMsg(char* msgToCheck) {
 }
 void updateRowsAndColumns(int* numOfChars) {
 	char tmpMemHolder[1024];
-	sb.sem_op = -1;
-	semop(semid, &sb, 1);
+	lock();
 	strcpy(tmpMemHolder, memVar);
-	sb.sem_op = 1;
-	semop(semid, &sb, 1);
+	unlock();
 	readMsg(tmpMemHolder);
 	*numOfChars = rowNum * columnNum;
 }
@@ -164,11 +165,9 @@ void firstTurn(char * board, int * numOfChars, int * conNum) {
 	char tmpBuffer[1024] = { '\0' };
 	sprintf(tmpBuffer, "p%d", getpid());
 
-	sb.sem_op = -1;
-	semop(semid, &sb, 1);
+	lock();
 	strcpy(tmpMemHolder, memVar);
-	sb.sem_op = 1;
-	semop(semid, &sb, 1);
+	unlock();
 	if (strcmp(tmpMemHolder, tmpBuffer) == 0) {
 		*conNum = 1;
 		printCurrentBoardState(board);
@@ -183,6 +182,26 @@ void firstTurn(char * board, int * numOfChars, int * conNum) {
 	} else {
 		*conNum = 2;
 		write(1, WAIT_MSG, strlen(WAIT_MSG));
+	}
+}
+void wholeTurn(char* board, char* holdLastMsg, int* numOfChars,int* conNum) {
+	updateBoard(board, holdLastMsg, numOfChars);
+	if (checkFinish(numOfChars) == 1) {
+		write(1, WINMSG, strlen(WINMSG));
+		free(board);
+		free(numOfChars);
+		free(conNum);
+		shmdt(&memKey);
+		exit(0);
+	}
+	playTurn(board, *conNum, numOfChars);
+	if (checkFinish(numOfChars) == 1) {
+		write(1, LOSEMSG, strlen(LOSEMSG));
+		free(board);
+		free(numOfChars);
+		free(conNum);
+		shmdt(&memKey);
+		exit(0);
 	}
 }
 int main(void) {
@@ -207,39 +226,18 @@ int main(void) {
 	for (int i = 0; i < rowNum * columnNum; ++i) {
 		board[i] = 'X';
 	}
-
 	firstTurn(board, numOfChars, conNum);
-
 	char holdLastMsg[1024] = { '\0' };
 	while (1) {
-		sb.sem_op = -1;
-		semop(semid, &sb, 1);
+		lock();
 		strcpy(holdLastMsg, memVar);
-		sb.sem_op = 1;
-		semop(semid, &sb, 1);
+		unlock();
 		if (holdLastMsg[0] == 'p') {
 			sleep(1);
 			continue;
 		}
 		if ((holdLastMsg[0] - '0') != *conNum) {
-			updateBoard(board, holdLastMsg, numOfChars);
-			if (checkFinish(numOfChars) == 1) {
-				write(1, WINMSG, strlen(WINMSG));
-				free(board);
-				free(numOfChars);
-				free(conNum);
-				shmdt(&memKey);
-				exit(0);
-			}
-			playTurn(board, *conNum, numOfChars);
-			if (checkFinish(numOfChars) == 1) {
-				write(1, LOSEMSG, strlen(LOSEMSG));
-				free(board);
-				free(numOfChars);
-				free(conNum);
-				shmdt(&memKey);
-				exit(0);
-			}
+			wholeTurn(board,holdLastMsg,numOfChars,conNum);
 		}
 		sleep(1);
 	}
