@@ -80,6 +80,7 @@ void updateBoard(char * board, char * turnMade, int * numOfChars) {//working
 		}
 		i++;
 	}
+	printCurrentBoardState(board);
 	removeFromBoard(row, column, board, numOfChars);
 }
 void playTurn(char* board, int myNum, int* numOfChars) {
