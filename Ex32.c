@@ -163,7 +163,6 @@ void updateRowsAndColumns(int* numOfChars) {
 	sb.sem_op = 1;
 	semop(semid, &sb, 1);
 	readMsg(tmpMemHolder);
-	numOfChars = malloc(sizeof(int));
 	*numOfChars = rowNum * columnNum;
 }
 
@@ -225,12 +224,15 @@ int main(void) {
 	initSemaphore();
 
 	int* conNum=malloc(sizeof(int));
+	numOfChars=malloc(sizeof(int));
+
 	updateRowsAndColumns(numOfChars);
 
 	char* board = malloc(sizeof(char) * rowNum * columnNum);
 	for (int i = 0; i < rowNum * columnNum; ++i) {
 		board[i] = 'X';
 	}
+
 	firstTurn(board, numOfChars, conNum);
 
 	char holdLastMsg[1024] = { '\0' };
