@@ -1,3 +1,0 @@
-all:
-	gcc -o server Ex31.c
-	gcc -o client Ex32.c

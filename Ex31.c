@@ -125,7 +125,6 @@ int main(void) {
 	write(1, "Please choose number of rows and columns\n",
 			strlen("Please choose number of rows and columns\n"));
 	scanf("%d%d", &rowNum, &columnNum);
-	printf("%d %d\n", rowNum, columnNum);
 
 	int * numOfChars = malloc(sizeof(int));
 	*numOfChars = rowNum * columnNum;
@@ -166,7 +165,13 @@ int main(void) {
 				write(1, "GAME OVER\n", strlen("GAME OVER\n"));
 				free(board);
 				free(numOfChars);
-				shmdt(&memKey);
+				sleep(2);
+				shmctl(memKey, IPC_RMID, NULL);
+				sb.sem_op = 1;
+				union semun arg;
+				arg.val = 0;
+				semctl(semid, 0, IPC_RMID, arg);
+				exit(0);
 			}
 			break;
 		}
@@ -185,7 +190,12 @@ int main(void) {
 				write(1, "GAME OVER\n", strlen("GAME OVER\n"));
 				free(board);
 				free(numOfChars);
-				shmdt(&memKey);
+				sleep(2);
+				shmctl(memKey, IPC_RMID, NULL);
+				sb.sem_op = 1;
+				union semun arg;
+				arg.val = 0;
+				semctl(semid, 0, IPC_RMID, arg);
 				exit(0);
 			}
 		}

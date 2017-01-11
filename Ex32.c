@@ -97,7 +97,6 @@ void playTurn(char* board, int myNum, int* numOfChars) {
 		}
 		break;
 	}
-	printf("%d %d\n", rowNum, columnNum);
 	lastTurnMadeRow = curRow;
 	lastTurnMadeColumn = curColumn;
 
@@ -172,6 +171,7 @@ void firstTurn(char * board, int * numOfChars, int * conNum) {
 	semop(semid, &sb, 1);
 	if (strcmp(tmpMemHolder, tmpBuffer) == 0) {
 		*conNum = 1;
+		printCurrentBoardState(board);
 		playTurn(board, *conNum, numOfChars);
 		if (checkFinish(numOfChars) == 1) { //change
 			write(1, LOSEMSG, strlen(LOSEMSG));
