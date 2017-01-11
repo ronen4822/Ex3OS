@@ -32,21 +32,18 @@ union semun {
 	ushort *array;
 };
 
-void removeFromBoard(int row, int column, char* board, int * numOfChars) {//NOT WORKING!!
+void removeFromBoard(int row, int column, char* board, int * numOfChars) { //NOT WORKING!!
 	int i, j, k;
-	for (i=0;i<=columnNum*row;i+=columnNum)
-	{
-		for (j=i;j<=(i+column);++j)
-		{
-			if (board[j]!='\0')
-			{
-				board[j]='\0';
+	for (i = 0; i <= columnNum * row; i += columnNum) {
+		for (j = i; j <= (i + column); ++j) {
+			if (board[j] != '\0') {
+				board[j] = '\0';
 				(*numOfChars)--;
 			}
 		}
 	}
 }
-void printCurrentBoardState(const char* board) {//working
+void printCurrentBoardState(const char* board) { //working
 	int i, j;
 	int k = 0;
 	for (i = 0; i < rowNum; ++i) {
@@ -60,7 +57,7 @@ void printCurrentBoardState(const char* board) {//working
 		write(1, "\n", 1);
 	}
 }
-void updateBoard(char * board, char * turnMade, int * numOfChars) {//working
+void updateBoard(char * board, char * turnMade, int * numOfChars) { //working
 	int row, column, i, switchToColumns;
 	i = 1;
 	row = 0;
@@ -80,8 +77,8 @@ void updateBoard(char * board, char * turnMade, int * numOfChars) {//working
 		}
 		i++;
 	}
-	printCurrentBoardState(board);
 	removeFromBoard(row, column, board, numOfChars);
+	printCurrentBoardState(board);
 }
 void playTurn(char* board, int myNum, int* numOfChars) {
 	int curRow, curColumn, math;
@@ -100,7 +97,7 @@ void playTurn(char* board, int myNum, int* numOfChars) {
 		}
 		break;
 	}
-	printf("%d %d\n",rowNum,columnNum);
+	printf("%d %d\n", rowNum, columnNum);
 	lastTurnMadeRow = curRow;
 	lastTurnMadeColumn = curColumn;
 
@@ -119,11 +116,8 @@ void playTurn(char* board, int myNum, int* numOfChars) {
 
 }
 int checkFinish(int* numOfChars) {
-	if ((*numOfChars) == 1) {
-		return 1;
-	}
 	if ((*numOfChars) == 0) {
-		return 2;
+		return 1;
 	}
 	return 0;
 }
@@ -152,7 +146,6 @@ void readMsg(char* msgToCheck) {
 			columns += msgToCheck[i] - '0';
 		}
 	}
-
 	rowNum = rows;
 	columnNum = columns;
 }
@@ -167,7 +160,6 @@ void updateRowsAndColumns(int* numOfChars) {
 	*numOfChars = rowNum * columnNum;
 }
 
-
 void firstTurn(char * board, int * numOfChars, int * conNum) {
 	char tmpMemHolder[1024];
 	char tmpBuffer[1024] = { '\0' };
@@ -180,27 +172,9 @@ void firstTurn(char * board, int * numOfChars, int * conNum) {
 	semop(semid, &sb, 1);
 	if (strcmp(tmpMemHolder, tmpBuffer) == 0) {
 		*conNum = 1;
-		//printCurrentBoardState(board);
 		playTurn(board, *conNum, numOfChars);
 		if (checkFinish(numOfChars) == 1) { //change
-			write(1, WINMSG, strlen(WINMSG));
-			sb.sem_op = -1;
-			semop(semid, &sb, 1);
-			strcpy(memVar, "You lost!");
-			sb.sem_op = 1;
-			semop(semid, &sb, 1);
-			free(board);
-			free(numOfChars);
-			shmdt(&memKey);
-			exit(0);
-		}
-		if (checkFinish(numOfChars) == 2) { //change
 			write(1, LOSEMSG, strlen(LOSEMSG));
-			sb.sem_op = -1;
-			semop(semid, &sb, 1);
-			strcpy(memVar, "You won!");
-			sb.sem_op = 1;
-			semop(semid, &sb, 1);
 			free(board);
 			free(numOfChars);
 			shmdt(&memKey);
@@ -224,8 +198,8 @@ int main(void) {
 	memVar = (char*) shmat(memKey, NULL, 0);
 	initSemaphore();
 
-	int* conNum=malloc(sizeof(int));
-	numOfChars=malloc(sizeof(int));
+	int* conNum = malloc(sizeof(int));
+	numOfChars = malloc(sizeof(int));
 
 	updateRowsAndColumns(numOfChars);
 
@@ -249,55 +223,23 @@ int main(void) {
 		}
 		if ((holdLastMsg[0] - '0') != *conNum) {
 			updateBoard(board, holdLastMsg, numOfChars);
-			playTurn(board, *conNum, numOfChars);
 			if (checkFinish(numOfChars) == 1) {
 				write(1, WINMSG, strlen(WINMSG));
-				sb.sem_op = -1;
-				semop(semid, &sb, 1);
-				strcpy(memVar, "You lost!");
-				sb.sem_op = 1;
-				semop(semid, &sb, 1);
 				free(board);
 				free(numOfChars);
 				free(conNum);
 				shmdt(&memKey);
 				exit(0);
 			}
-			if (checkFinish(numOfChars) == 2) {
+			playTurn(board, *conNum, numOfChars);
+			if (checkFinish(numOfChars) == 1) {
 				write(1, LOSEMSG, strlen(LOSEMSG));
-				sb.sem_op = -1;
-				semop(semid, &sb, 1);
-				strcpy(memVar, "You won!");
-				sb.sem_op = 1;
-				semop(semid, &sb, 1);
 				free(board);
-				free(conNum);
 				free(numOfChars);
+				free(conNum);
 				shmdt(&memKey);
 				exit(0);
 			}
-		}
-		if (strcmp(holdLastMsg, "You won!") == 0) {
-			write(1, WINMSG, strlen(WINMSG));
-			free(board);
-			free(conNum);
-			free(numOfChars);
-			shmctl(memKey, IPC_RMID, NULL);
-			union semun arg;
-			arg.val = 0;
-			semctl(semid, 0, IPC_RMID, arg);
-			exit(0);
-		}
-		if (strcmp(holdLastMsg, "You lose!") == 0) {
-			write(1, LOSEMSG, strlen(LOSEMSG));
-			free(board);
-			free(conNum);
-			free(numOfChars);
-			shmctl(memKey, IPC_RMID, NULL);
-			union semun arg;
-			arg.val = 0;
-			semctl(semid, 0, IPC_RMID, arg);
-			exit(0);
 		}
 		sleep(1);
 	}

@@ -25,7 +25,6 @@
 #define SEMKEY "Ex32.c"
 #define MEMSIZE 1024
 
-
 int rowNum;
 int columnNum;
 int semid;
@@ -49,15 +48,12 @@ int readInput() {
 	}
 	return curNumber;
 }
-void removeFromBoard(int row, int column, char* board, int * numOfChars) {//NOT WORKING!!
+void removeFromBoard(int row, int column, char* board, int * numOfChars) { //NOT WORKING!!
 	int i, j, k;
-	for (i=0;i<=columnNum*row;i+=columnNum)
-	{
-		for (j=i;j<=(i+column);++j)
-		{
-			if (board[j]!='\0')
-			{
-				board[j]='\0';
+	for (i = 0; i <= columnNum * row; i += columnNum) {
+		for (j = i; j <= (i + column); ++j) {
+			if (board[j] != '\0') {
+				board[j] = '\0';
 				(*numOfChars)--;
 			}
 		}
@@ -85,6 +81,12 @@ void updateBoard(char * board, char * turnMade, int * numOfChars) {
 	}
 	removeFromBoard(row, column, board, numOfChars);
 }
+int checkFinish(int* numOfChars) {
+	if ((*numOfChars) == 0) {
+		return 1;
+	}
+	return 0;
+}
 void initSemaphore() {
 	key_t semKey = ftok(SEMKEY, 'r');
 	semid = semget(semKey, 1, IPC_CREAT | 0666);
@@ -109,21 +111,21 @@ int main(void) {
 
 	mkfifo(FIFONAME, 0777);
 	printf("opened fifo\n");
-	write(1,WAITING,strlen(WAITING));
+	write(1, WAITING, strlen(WAITING));
 	fd = open(FIFONAME, O_RDONLY);
 	pid_t fClient, sClient;
 	read(fd, &fClient, sizeof(pid_t));
-	write(1,WAITING,strlen(WAITING));
-	while (read(fd, &sClient, sizeof(pid_t))<=0)
-	{
+	write(1, WAITING, strlen(WAITING));
+	while (read(fd, &sClient, sizeof(pid_t)) <= 0) {
 		sleep(0);
 	}
 	close(fd);
 	unlink(FIFONAME);
 
-	write(1,"Please choose number of rows and columns\n",strlen("Please choose number of rows and columns\n"));
-	scanf("%d%d",&rowNum,&columnNum);
-	printf("%d %d\n",rowNum,columnNum);
+	write(1, "Please choose number of rows and columns\n",
+			strlen("Please choose number of rows and columns\n"));
+	scanf("%d%d", &rowNum, &columnNum);
+	printf("%d %d\n", rowNum, columnNum);
 
 	int * numOfChars = malloc(sizeof(int));
 	*numOfChars = rowNum * columnNum;
@@ -132,11 +134,11 @@ int main(void) {
 	for (i = 0; i < rowNum * columnNum; ++i) {
 		board[i] = 'X';
 	}
-	char tmpForBonus[1024]={'\0'};
-	char extraTmp[1024]={'\0'};
-	int numOfChanges=0;
-	sprintf(memVar,"%d,%d",rowNum,columnNum);
-	sprintf(tmpForBonus,"%d,%d",rowNum,columnNum);
+	char tmpForBonus[1024] = { '\0' };
+	char extraTmp[1024] = { '\0' };
+	int numOfChanges = 0;
+	sprintf(memVar, "%d,%d", rowNum, columnNum);
+	sprintf(tmpForBonus, "%d,%d", rowNum, columnNum);
 
 	sb.sem_op = 1;
 	semop(semid, &sb, 1);
@@ -160,6 +162,12 @@ int main(void) {
 		semop(semid, &sb, 1);
 		if (tmp[0] != 'p') {
 			updateBoard(board, tmp, numOfChars);
+			if (checkFinish(numOfChars) == 1) {
+				write(1, "GAME OVER\n", strlen("GAME OVER\n"));
+				free(board);
+				free(numOfChars);
+				shmdt(&memKey);
+			}
 			break;
 		}
 	}
@@ -173,12 +181,13 @@ int main(void) {
 		semop(semid, &sb, 1);
 		if ((tmp[0] - '0') != lastTurn) {
 			updateBoard(board, tmp, numOfChars);
-		}
-		if (tmp[0] == 'Y') {
-			write(1,"GAME OVER\n",strlen("GAME OVER\n"));
-			free(board);
-			free(numOfChars);
-			exit(0);
+			if (checkFinish(numOfChars) == 1) {
+				write(1, "GAME OVER\n", strlen("GAME OVER\n"));
+				free(board);
+				free(numOfChars);
+				shmdt(&memKey);
+				exit(0);
+			}
 		}
 		sleep(1);
 	}
