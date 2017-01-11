@@ -40,7 +40,7 @@ void unlock() {
 	semop(semid, &sb, 1);
 }
 void removeFromBoard(int row, int column, char* board, int * numOfChars) {
-	int i, j, k;
+	int i, j;
 	for (i = 0; i <= columnNum * row; i += columnNum) {
 		for (j = i; j <= (i + column); ++j) {
 			if (board[j] != '\0') {
@@ -52,7 +52,6 @@ void removeFromBoard(int row, int column, char* board, int * numOfChars) {
 }
 void printCurrentBoardState(const char* board) {
 	int i, j;
-	int k = 0;
 	for (i = 0; i < rowNum; ++i) {
 		for (j = i * columnNum; j < (i * columnNum) + columnNum; ++j) {
 			if (board[j] == '\0') {
