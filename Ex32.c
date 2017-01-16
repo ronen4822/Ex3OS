@@ -32,14 +32,19 @@ union semun {
 	ushort *array;
 };
 void lock() {
+	/*Locks the semaphore*/
 	sb.sem_op = -1;
 	semop(semid, &sb, 1);
 }
 void unlock() {
+	/*Unlocks the semaphore*/	
 	sb.sem_op = 1;
 	semop(semid, &sb, 1);
 }
 void removeFromBoard(int row, int column, char* board, int * numOfChars) {
+	/*Receives: current board, current number of left chars, row and column.
+	The function removes all 'X' which are placed above and to the right of the given
+	location (row and column) and updates the board and number of chars accordingly.*/	
 	int i, j;
 	for (i = 0; i <= columnNum * row; i += columnNum) {
 		for (j = i; j <= (i + column); ++j) {
@@ -51,6 +56,7 @@ void removeFromBoard(int row, int column, char* board, int * numOfChars) {
 	}
 }
 void printCurrentBoardState(const char* board) {
+	/*Receives current board and prints it out to the user.*/
 	int i, j;
 	for (i = 0; i < rowNum; ++i) {
 		for (j = i * columnNum; j < (i * columnNum) + columnNum; ++j) {
@@ -64,6 +70,9 @@ void printCurrentBoardState(const char* board) {
 	}
 }
 void updateBoard(char * board, char * turnMade, int * numOfChars) {
+	/*Receives: current board, the new turn which was made by the player, current number of left chars.
+	The function splits the given turn string into two chars (row and column) and uses them to update the server's board*/
+
 	int row, column, i, switchToColumns;
 	i = 1;
 	row = 0;
@@ -84,9 +93,10 @@ void updateBoard(char * board, char * turnMade, int * numOfChars) {
 		i++;
 	}
 	removeFromBoard(row, column, board, numOfChars);
-	printCurrentBoardState(board);
+	printCurrentBoardState(board); /*Prints the board after removal*/
 }
 void playTurn(char* board, int myNum, int* numOfChars) {
+	/*Generic turn function. Prints out a menu, receives inputs and removes from the board with given inputs.*/
 	int curRow, curColumn, math;
 	while (1) {
 		write(1, "Please choose a row and column\n",
@@ -118,17 +128,21 @@ void playTurn(char* board, int myNum, int* numOfChars) {
 	unlock();
 }
 int checkFinish(int* numOfChars) {
+	/*Check the amount of chars which are non null. If there are none- the game is over*/
 	if ((*numOfChars) == 0) {
 		return 1;
 	}
 	return 0;
 }
 void initSemaphore() {
+	/*Initiate semaphore*/
 	key_t semKey = ftok(SEMKEY, 'r');
 	semid = semget(semKey, 1, 0666);
-	//semaphore now set
+	/*semaphore now set*/
 }
 void readMsg(char* msgToCheck) {
+	/*Reads the msg that has the number of rows and columns and updates local
+	variables: rowNum,columnNum*/	
 	int rows, columns, change;
 	change = 0;
 	rows = 0;
@@ -151,6 +165,7 @@ void readMsg(char* msgToCheck) {
 	columnNum = columns;
 }
 void updateRowsAndColumns(int* numOfChars) {
+	/*Updates local information about the board*/
 	char tmpMemHolder[1024];
 	lock();
 	strcpy(tmpMemHolder, memVar);
@@ -160,6 +175,8 @@ void updateRowsAndColumns(int* numOfChars) {
 }
 
 void firstTurn(char * board, int * numOfChars, int * conNum) {
+	/*The first turn tells each client his connection number (first client or second client) and plays
+	a turn normally on the first client*/
 	char tmpMemHolder[1024];
 	char tmpBuffer[1024] = { '\0' };
 	sprintf(tmpBuffer, "p%d", getpid());
@@ -171,7 +188,7 @@ void firstTurn(char * board, int * numOfChars, int * conNum) {
 		*conNum = 1;
 		printCurrentBoardState(board);
 		playTurn(board, *conNum, numOfChars);
-		if (checkFinish(numOfChars) == 1) { //change
+		if (checkFinish(numOfChars) == 1) {
 			write(1, LOSEMSG, strlen(LOSEMSG));
 			free(board);
 			free(numOfChars);
@@ -184,6 +201,8 @@ void firstTurn(char * board, int * numOfChars, int * conNum) {
 	}
 }
 void wholeTurn(char* board, char* holdLastMsg, int* numOfChars,int* conNum) {
+	/*Receives the current state of the board, the last msg ,current number of chars and connection number (client1 or client2).
+	It then takes care of printing the new board, printing the menu and closing the client (if needed).*/
 	updateBoard(board, holdLastMsg, numOfChars);
 	if (checkFinish(numOfChars) == 1) {
 		write(1, WINMSG, strlen(WINMSG));

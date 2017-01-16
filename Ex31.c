@@ -1,13 +1,3 @@
-/*
- ============================================================================
- Name        : Ex3.c
- Author      : 
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -38,7 +28,8 @@ union semun {
 	ushort *array;
 };
 
-int readInput() {
+int readInput() { 
+	/*Reads a line from the user*/
 	int curNumber = 0;
 	int ch;
 	do {
@@ -52,6 +43,9 @@ int readInput() {
 	return curNumber;
 }
 void removeFromBoard(int row, int column, char* board, int * numOfChars) {
+	/*Receives: current board, current number of left chars, row and column.
+	The function removes all 'X' which are placed above and to the right of the given
+	location (row and column) and updates the board and number of chars accordingly.*/
 	int i, j;
 	for (i = 0; i <= columnNum * row; i += columnNum) {
 		for (j = i; j <= (i + column); ++j) {
@@ -63,6 +57,8 @@ void removeFromBoard(int row, int column, char* board, int * numOfChars) {
 	}
 }
 void updateBoard(char * board, char * turnMade, int * numOfChars) {
+	/*Receives: current board, the new turn which was made by the player, current number of left chars.
+	The function splits the given turn string into two chars (row and column) and uses them to update the server's board*/
 	int row, column, i, switchToColumns;
 	i = 1;
 	row = 0;
@@ -85,20 +81,25 @@ void updateBoard(char * board, char * turnMade, int * numOfChars) {
 	removeFromBoard(row, column, board, numOfChars);
 }
 int checkFinish(int* numOfChars) {
+	/*Check the amount of chars which are non null. If there are none- the game is over*/
 	if ((*numOfChars) == 0) {
 		return 1;
 	}
 	return 0;
 }
 void initSemaphore() {
+	/*Initializes the semaphore*/
 	key_t semKey = ftok(SEMKEY, 'r');
 	semid = semget(semKey, 1, IPC_CREAT | 0666);
 	union semun arg;
 	arg.val = 1;
 	semctl(semid, 0, SETVAL, arg);
-	//semaphore now set
+	/*semaphore now set*/
 }
 void finish(char * board, int * numOfChars) {
+	/*This function is called when game ending conditions are met.
+	The function prints the string GAME OVER, frees relevant memory ,waits 2 seconds (to ensure that the second client
+	has read the turn), deletes the semaphore and shared memory and exists */
 	write(1, "GAME OVER\n", strlen("GAME OVER\n"));
 	free(board);
 	free(numOfChars);
@@ -111,10 +112,12 @@ void finish(char * board, int * numOfChars) {
 	exit(0);
 }
 void lock() {
+	/*Locks the semaphore*/
 	sb.sem_op = -1;
 	semop(semid, &sb, 1);
 }
 void unlock() {
+	/*Unlocks the semaphore*/
 	sb.sem_op = 1;
 	semop(semid, &sb, 1);
 }
@@ -125,9 +128,9 @@ int main(void) {
 	sb.sem_flg = 0;
 
 	key_t currentKey = ftok(KEYNAME, 'j');
-	memKey = shmget(currentKey, MEMSIZE, IPC_CREAT | 0666); //create shared memory
+	memKey = shmget(currentKey, MEMSIZE, IPC_CREAT | 0666); /*create shared memory*/
 	char* memVar = (char*) shmat(memKey, NULL, 0);
-	initSemaphore();
+	initSemaphore(); /*intitialize memory*/
 	lock();
 	mkfifo(FIFONAME, 0777);
 	printf("opened fifo\n");
@@ -136,11 +139,11 @@ int main(void) {
 	pid_t fClient, sClient;
 	read(fd, &fClient, sizeof(pid_t));
 	write(1, WAITING, strlen(WAITING));
-	while (read(fd, &sClient, sizeof(pid_t)) <= 0) {
-		sleep(0);
+	while (read(fd, &sClient, sizeof(pid_t)) <= 0) { /*read until new information is present (the second client's pid)*/
+		sleep(0); 
 	}
 	close(fd);
-	unlink(FIFONAME);
+	unlink(FIFONAME); /*delete the fifo*/
 
 	write(1, "Please choose number of rows and columns\n",
 			strlen("Please choose number of rows and columns\n"));
@@ -155,7 +158,9 @@ int main(void) {
 	char tmpForBonus[1024] = { '\0' };
 	sprintf(memVar, "%d,%d", rowNum, columnNum);
 	sprintf(tmpForBonus, "%d,%d", rowNum, columnNum);
-	unlock();
+	unlock(); 
+	/*Logically, unlocking and locking will place the next lock at the end of the semaphore queue which 
+	ensures both clients have read the number of rows and columns*/
 	lock();
 	sprintf(memVar, "p%d", fClient);
 	unlock();
